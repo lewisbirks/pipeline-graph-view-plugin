@@ -4,7 +4,7 @@ import java.util.List;
 import java.util.Map;
 
 public interface PipelineStepBuilderApi {
-    public Map<String, List<FlowNodeWrapper>> getAllSteps();
+    Map<String, List<FlowNodeWrapper>> getAllSteps();
 
-    public List<FlowNodeWrapper> getStageSteps(String startNodeId);
+    List<FlowNodeWrapper> getStageSteps(String startNodeId);
 }

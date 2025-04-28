@@ -9,8 +9,6 @@ import hudson.model.Queue;
 import io.jenkins.plugins.pipelinegraphview.treescanner.PipelineNodeGraphAdapter;
 import java.io.IOException;
 import java.util.*;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.TimeoutException;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.jenkinsci.plugins.workflow.actions.WorkspaceAction;
@@ -29,7 +27,7 @@ public class PipelineGraphApi {
         this.run = run;
     }
 
-    public Integer replay() throws ExecutionException, InterruptedException, TimeoutException {
+    public Integer replay() {
         run.checkPermission(Item.BUILD);
 
         CauseAction causeAction = new CauseAction(new Cause.UserIdCause());
@@ -102,7 +100,7 @@ public class PipelineGraphApi {
                 stageToChildrenMap.put(stage.getId(), new ArrayList<>());
             } else {
                 List<String> parentChildren =
-                        stageToChildrenMap.getOrDefault(stage.getParents().get(0), new ArrayList<String>());
+                        stageToChildrenMap.getOrDefault(stage.getParents().get(0), new ArrayList<>());
                 parentChildren.add(stage.getId());
                 childNodes.add(stage.getId());
                 stageToChildrenMap.put(stage.getParents().get(0), parentChildren);

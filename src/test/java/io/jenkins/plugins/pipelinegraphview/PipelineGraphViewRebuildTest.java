@@ -2,6 +2,7 @@ package io.jenkins.plugins.pipelinegraphview;
 
 import static org.awaitility.Awaitility.await;
 import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.Matchers.hasSize;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import com.microsoft.playwright.Browser;
@@ -61,7 +62,7 @@ class PipelineGraphViewRebuildTest {
     private static void waitUntilBuildIsComplete(JenkinsRule j, WorkflowRun run) {
         await().until(() -> j.jenkins.getQueue().isEmpty(), is(true));
         WorkflowJob parent = run.getParent();
-        await().until(() -> parent.getBuilds().size(), is(2));
+        await().until(parent::getBuilds, hasSize(2));
 
         WorkflowRun lastBuild = parent.getLastBuild();
         await().until(() -> lastBuild, RunMatchers.completed());

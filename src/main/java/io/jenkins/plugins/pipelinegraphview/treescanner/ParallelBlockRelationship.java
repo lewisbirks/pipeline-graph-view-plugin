@@ -21,7 +21,7 @@ import org.slf4j.LoggerFactory;
 
 public class ParallelBlockRelationship extends NodeRelationship {
     private static final Logger logger = LoggerFactory.getLogger(ParallelBlockRelationship.class);
-    private boolean isDebugEnabled = logger.isDebugEnabled();
+    private final boolean isDebugEnabled = logger.isDebugEnabled();
 
     @NonNull
     protected List<BlockStartNode> branchStarts = new ArrayList<>();
@@ -109,7 +109,7 @@ public class ParallelBlockRelationship extends NodeRelationship {
      */
     private void calculateTimings(WorkflowRun run) {
         long[] pauseDurations = this.branchStarts.stream()
-                .mapToLong(s -> PauseAction.getPauseDuration(s))
+                .mapToLong(PauseAction::getPauseDuration)
                 .toArray();
         // The parallel API expects parallel end to be null if this is still running -
         // so only pass it if it;s not the start node;

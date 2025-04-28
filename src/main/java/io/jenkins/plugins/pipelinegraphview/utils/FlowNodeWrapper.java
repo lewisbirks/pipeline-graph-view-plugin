@@ -300,8 +300,7 @@ public class FlowNodeWrapper {
     boolean isBlockErrorInterruptedWithAbort() {
         if (hasBlockError()) {
             Throwable error = blockErrorAction.getError();
-            if (error instanceof FlowInterruptedException) {
-                FlowInterruptedException interrupted = (FlowInterruptedException) error;
+            if (error instanceof FlowInterruptedException interrupted) {
                 return interrupted.getResult().equals(Result.ABORTED);
             }
         }

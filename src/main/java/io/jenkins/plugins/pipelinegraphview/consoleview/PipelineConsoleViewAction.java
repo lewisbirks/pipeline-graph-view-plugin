@@ -178,7 +178,7 @@ public class PipelineConsoleViewAction extends AbstractPipelineViewAction {
     }
 
     protected JSONObject getConsoleOutputJson(String nodeId, Long requestStartByte) throws IOException {
-        Long startByte = 0L;
+        long startByte = 0L;
         long endByte = 0L;
         long textLength;
         String text = "";

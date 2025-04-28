@@ -4,7 +4,6 @@ import io.jenkins.plugins.pipelinegraphview.utils.FlowNodeWrapper;
 import io.jenkins.plugins.pipelinegraphview.utils.PipelineGraphBuilderApi;
 import io.jenkins.plugins.pipelinegraphview.utils.PipelineStepBuilderApi;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -24,8 +23,8 @@ import org.slf4j.LoggerFactory;
 public class PipelineNodeGraphAdapter implements PipelineGraphBuilderApi, PipelineStepBuilderApi {
 
     private static final Logger logger = LoggerFactory.getLogger(PipelineNodeGraphAdapter.class);
-    private boolean isDebugEnabled = logger.isDebugEnabled();
-    private PipelineNodeTreeScanner treeScanner;
+    private final boolean isDebugEnabled = logger.isDebugEnabled();
+    private final PipelineNodeTreeScanner treeScanner;
     private List<FlowNodeWrapper> pipelineNodesList;
     private Map<String, List<FlowNodeWrapper>> stepsMap;
     private Map<String, String> nodesToRemap;
@@ -43,7 +42,7 @@ public class PipelineNodeGraphAdapter implements PipelineGraphBuilderApi, Pipeli
         // map to.
         // Most of the logic here is to recreate old behavior - it might not be to
         // everyone's liking.
-        this.nodesToRemap = new HashMap<String, String>();
+        this.nodesToRemap = new HashMap<>();
         for (int i = pipelineNodesList.size() - 1; i >= 0; i--) {
             FlowNodeWrapper node = pipelineNodesList.get(i);
             for (FlowNodeWrapper parent : node.getParents()) {
@@ -84,7 +83,6 @@ public class PipelineNodeGraphAdapter implements PipelineGraphBuilderApi, Pipeli
                                 parent.getType());
                     }
                     this.nodesToRemap.put(node.getId(), parent.getId());
-                    continue;
                 }
             }
         }
@@ -117,9 +115,7 @@ public class PipelineNodeGraphAdapter implements PipelineGraphBuilderApi, Pipeli
                     nodes.addAll(stepsList);
                 }
             }
-            if (isDebugEnabled) {
-                logger.debug(FlowNodeWrapper.getNodeGraphviz(nodes));
-            }
+            logger.debug(FlowNodeWrapper.getNodeGraphviz(nodes));
         }
     }
 
@@ -135,8 +131,8 @@ public class PipelineNodeGraphAdapter implements PipelineGraphBuilderApi, Pipeli
         }
         Map<String, FlowNodeWrapper> pipelineNodeMap = treeScanner.getPipelineNodeMap();
 
-        this.pipelineNodesList = new ArrayList<FlowNodeWrapper>(pipelineNodeMap.values());
-        Collections.sort(this.pipelineNodesList, new FlowNodeWrapper.NodeComparator());
+        this.pipelineNodesList = new ArrayList<>(pipelineNodeMap.values());
+        this.pipelineNodesList.sort(new FlowNodeWrapper.NodeComparator());
         // Remove children whose parents were skipped.
         Map<String, String> nodesToRemap = getNodesToRemap(this.pipelineNodesList);
         if (isDebugEnabled) {
@@ -153,7 +149,7 @@ public class PipelineNodeGraphAdapter implements PipelineGraphBuilderApi, Pipeli
         for (int i = this.pipelineNodesList.size() - 1; i >= 0; i--) {
             FlowNodeWrapper node = this.pipelineNodesList.get(i);
             List<String> parentIds =
-                    node.getParents().stream().map(FlowNodeWrapper::getId).collect(Collectors.toList());
+                    node.getParents().stream().map(FlowNodeWrapper::getId).toList();
             for (String parentId : parentIds) {
                 if (nodesToRemap.containsKey(parentId)) {
                     FlowNodeWrapper parent = pipelineNodeMap.get(parentId);
@@ -230,7 +226,7 @@ public class PipelineNodeGraphAdapter implements PipelineGraphBuilderApi, Pipeli
                         this.stepsMap.getOrDefault(remappedParentId, new ArrayList<>());
                 remappedParentStepsList.addAll(this.stepsMap.get(originalParentId));
                 // Ensure steps are sorted correctly.
-                Collections.sort(remappedParentStepsList, new FlowNodeWrapper.NodeComparator());
+                remappedParentStepsList.sort(new FlowNodeWrapper.NodeComparator());
                 this.stepsMap.put(remappedParentId, remappedParentStepsList);
                 this.stepsMap.remove(originalParentId);
             }
@@ -253,7 +249,7 @@ public class PipelineNodeGraphAdapter implements PipelineGraphBuilderApi, Pipeli
     }
 
     public List<FlowNodeWrapper> getStageSteps(String startNodeId) {
-        return getAllSteps().getOrDefault(startNodeId, new ArrayList<FlowNodeWrapper>());
+        return getAllSteps().getOrDefault(startNodeId, new ArrayList<>());
     }
 
     public Map<String, List<FlowNodeWrapper>> getStep() {

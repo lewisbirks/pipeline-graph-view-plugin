@@ -4,5 +4,5 @@ import java.util.List;
 
 public interface PipelineGraphBuilderApi {
 
-    public List<FlowNodeWrapper> getPipelineNodes();
+    List<FlowNodeWrapper> getPipelineNodes();
 }

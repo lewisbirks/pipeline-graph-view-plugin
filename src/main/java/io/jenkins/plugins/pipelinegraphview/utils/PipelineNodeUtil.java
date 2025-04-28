@@ -4,7 +4,7 @@ import com.google.common.base.Predicate;
 import edu.umd.cs.findbugs.annotations.CheckForNull;
 import edu.umd.cs.findbugs.annotations.NonNull;
 import edu.umd.cs.findbugs.annotations.Nullable;
-import edu.umd.cs.findbugs.annotations.SuppressWarnings;
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import hudson.AbortException;
 import hudson.console.AnnotatedLargeText;
 import hudson.model.Action;
@@ -55,8 +55,7 @@ public class PipelineNodeUtil {
             if (node instanceof AtomNode) {
                 return true;
             }
-            if (node instanceof StepStartNode) {
-                StepStartNode stepStartNode = (StepStartNode) node;
+            if (node instanceof StepStartNode stepStartNode) {
                 boolean takesImplicitBlockArgument = false;
                 StepDescriptor sd = stepStartNode.getDescriptor();
                 if (sd != null) {
@@ -73,8 +72,7 @@ public class PipelineNodeUtil {
 
     public static boolean isStage(FlowNode node) {
         if (node != null) {
-            if (node instanceof StepStartNode) {
-                StepStartNode stepStartNode = (StepStartNode) node;
+            if (node instanceof StepStartNode stepStartNode) {
                 if (stepStartNode.getDescriptor() != null) {
                     StepDescriptor sd = stepStartNode.getDescriptor();
                     return sd != null && StageStep.DescriptorImpl.class.equals(sd.getClass()) && stepStartNode.isBody();
@@ -124,8 +122,7 @@ public class PipelineNodeUtil {
         }
 
         for (Action action : node.getActions()) {
-            if (action instanceof TagsAction && ((TagsAction) action).getTagValue(StageStatus.TAG_NAME) != null) {
-                TagsAction tagsAction = (TagsAction) action;
+            if (action instanceof TagsAction tagsAction && tagsAction.getTagValue(StageStatus.TAG_NAME) != null) {
                 String value = tagsAction.getTagValue(StageStatus.TAG_NAME);
                 return value != null
                         && (value.equals(StageStatus.getSkippedForConditional())
@@ -150,8 +147,7 @@ public class PipelineNodeUtil {
     }
 
     public static boolean isParallelBranch(@Nullable FlowNode node) {
-        if (node != null && node instanceof StepStartNode) {
-            StepStartNode stepStartNode = (StepStartNode) node;
+        if (node instanceof StepStartNode stepStartNode) {
             if (stepStartNode.getDescriptor() != null) {
                 StepDescriptor sd = stepStartNode.getDescriptor();
                 return sd != null && ParallelStep.DescriptorImpl.class.equals(sd.getClass()) && stepStartNode.isBody();
@@ -243,8 +239,7 @@ public class PipelineNodeUtil {
     }
 
     protected static boolean isParallelBlock(@NonNull FlowNode node) {
-        if (node != null && node instanceof StepStartNode) {
-            StepStartNode stepStartNode = (StepStartNode) node;
+        if (node instanceof StepStartNode stepStartNode) {
             if (stepStartNode.getDescriptor() != null) {
                 StepDescriptor sd = stepStartNode.getDescriptor();
                 return sd != null && ParallelStep.DescriptorImpl.class.equals(sd.getClass()) && !stepStartNode.isBody();
@@ -262,8 +257,7 @@ public class PipelineNodeUtil {
      * @return true if {@code node} is the non-body start of the agent execution.
      */
     public static boolean isAgentStart(@Nullable FlowNode node) {
-        if (node != null && node instanceof StepStartNode) {
-            StepStartNode stepStartNode = (StepStartNode) node;
+        if (node instanceof StepStartNode stepStartNode) {
             if (stepStartNode.getDescriptor() != null) {
                 StepDescriptor sd = stepStartNode.getDescriptor();
                 return sd != null && ExecutorStep.DescriptorImpl.class.equals(sd.getClass()) && !stepStartNode.isBody();
@@ -312,7 +306,7 @@ public class PipelineNodeUtil {
      * @return The AnnotatedLargeText object representing the log text for this
      * node, or null.
      */
-    @SuppressWarnings("RV_RETURN_VALUE_IGNORED")
+    @SuppressFBWarnings("RV_RETURN_VALUE_IGNORED")
     public static String convertLogToString(AnnotatedLargeText<? extends FlowNode> log, Long startByte, boolean html)
             throws IOException {
         Writer stringWriter = new StringBuilderWriter();
@@ -352,7 +346,7 @@ public class PipelineNodeUtil {
                         log += message + "\n\t";
                     }
                     log += Arrays.stream(exception.getStackTrace())
-                            .map(s -> s.toString())
+                            .map(StackTraceElement::toString)
                             .collect(Collectors.joining("\n\t"));
                 }
             }
@@ -362,9 +356,6 @@ public class PipelineNodeUtil {
     }
 
     public static boolean isJenkinsFailureException(Throwable exception) {
-        if (exception instanceof AbortException || exception instanceof FlowInterruptedException) {
-            return true;
-        }
-        return false;
+        return exception instanceof AbortException || exception instanceof FlowInterruptedException;
     }
 }

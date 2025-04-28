@@ -33,9 +33,7 @@ public class PipelineGraphViewAction extends AbstractPipelineViewAction {
     @SuppressWarnings("unused")
     public RunDetailsCard getRunDetailsCard() {
 
-        List<RunDetailsItem> runDetailsItems = new ArrayList<>();
-
-        runDetailsItems.addAll(SCMRunDetailsItems.get(run));
+        List<RunDetailsItem> runDetailsItems = new ArrayList<>(SCMRunDetailsItems.get(run));
 
         if (!runDetailsItems.isEmpty()) {
             runDetailsItems.add(new RunDetailsItem.Builder().separator().build());

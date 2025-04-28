@@ -17,7 +17,7 @@ public class UpstreamCauseRunDetailsItem {
         return causes.stream()
                 .filter(cause -> cause instanceof Cause.UpstreamCause)
                 .map(upstreamCause -> (Cause.UpstreamCause) upstreamCause)
-                .map(upstreamCause -> upstreamCause.getUpstreamRun())
+                .map(Cause.UpstreamCause::getUpstreamRun)
                 .filter(Objects::nonNull)
                 // TODO i18n
                 .map(upstreamRun -> new RunDetailsItem.Builder()

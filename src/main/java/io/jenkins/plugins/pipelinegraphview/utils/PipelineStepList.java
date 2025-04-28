@@ -8,7 +8,7 @@ public class PipelineStepList {
     private List<PipelineStep> steps;
 
     public PipelineStepList() {
-        this.steps = new ArrayList<PipelineStep>();
+        this.steps = new ArrayList<>();
     }
 
     public PipelineStepList(List<PipelineStep> steps) {

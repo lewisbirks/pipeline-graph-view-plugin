@@ -6,7 +6,6 @@ import io.jenkins.plugins.pipelinegraphview.utils.FlowNodeWrapper;
 import io.jenkins.plugins.pipelinegraphview.utils.PipelineNodeUtil;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -19,7 +18,7 @@ import org.slf4j.LoggerFactory;
 
 public class NodeRelationshipFinder {
     private static final Logger logger = LoggerFactory.getLogger(NodeRelationshipFinder.class);
-    private boolean isDebugEnabled = logger.isDebugEnabled();
+    private final boolean isDebugEnabled = logger.isDebugEnabled();
 
     private LinkedHashMap<String, FlowNode> endNodes = new LinkedHashMap<>();
 
@@ -58,7 +57,7 @@ public class NodeRelationshipFinder {
         // If there was a method to tell if a node was a parallel block this might be
         // less of an issue.
         List<String> sortedIds = new ArrayList<>(nodeMap.keySet());
-        Collections.sort(sortedIds, new FlowNodeWrapper.NodeIdComparator().reversed());
+        sortedIds.sort(new FlowNodeWrapper.NodeIdComparator().reversed());
         if (isDebugEnabled) {
             logger.debug("Sorted Ids: {}", String.join(", ", sortedIds));
         }
@@ -92,8 +91,8 @@ public class NodeRelationshipFinder {
     }
 
     private void addSeenNodes(FlowNode node) {
-        if (!seenChildNodes.keySet().contains(node.getEnclosingId())) {
-            seenChildNodes.put(node.getEnclosingId(), new ArrayDeque<FlowNode>());
+        if (!seenChildNodes.containsKey(node.getEnclosingId())) {
+            seenChildNodes.put(node.getEnclosingId(), new ArrayDeque<>());
         }
         if (isDebugEnabled) {
             logger.debug("Adding {} to seenChildNodes {}", node.getId(), node.getEnclosingId());
@@ -132,10 +131,10 @@ public class NodeRelationshipFinder {
     }
 
     private ArrayDeque<FlowNode> getProcessedChildren(@CheckForNull FlowNode node) {
-        if (node != null && seenChildNodes.keySet().contains(node.getId())) {
+        if (node != null && seenChildNodes.containsKey(node.getId())) {
             return seenChildNodes.get(node.getId());
         }
-        return new ArrayDeque<FlowNode>();
+        return new ArrayDeque<>();
     }
 
     private void addStepRelationship(@NonNull StepAtomNode step) {

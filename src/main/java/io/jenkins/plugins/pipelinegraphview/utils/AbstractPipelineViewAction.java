@@ -8,10 +8,6 @@ import hudson.model.Item;
 import hudson.model.Queue;
 import hudson.security.Permission;
 import hudson.util.HttpResponses;
-import java.io.IOException;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.TimeoutException;
-import java.util.logging.Level;
 import java.util.logging.Logger;
 import net.sf.json.JSONObject;
 import org.jenkins.ui.icon.IconSpec;
@@ -40,11 +36,11 @@ public abstract class AbstractPipelineViewAction implements Action, IconSpec {
     }
 
     public Permission getPermission() {
-        return run.getParent().BUILD;
+        return Item.BUILD;
     }
 
     public Permission getConfigurePermission() {
-        return run.getParent().CONFIGURE;
+        return Item.CONFIGURE;
     }
 
     public String getBuildDisplayName() {
@@ -56,17 +52,14 @@ public abstract class AbstractPipelineViewAction implements Action, IconSpec {
      */
     @RequirePOST
     @JavaScriptMethod
-    public boolean doRebuild() throws IOException, ExecutionException {
+    public boolean doRebuild() {
         if (run != null) {
             run.checkAnyPermission(Item.BUILD);
             ReplayAction replayAction = run.getAction(ReplayAction.class);
             Queue.Item item =
                     replayAction.run2(replayAction.getOriginalScript(), replayAction.getOriginalLoadedScripts());
 
-            if (item == null) {
-                return false;
-            }
-            return true;
+            return item != null;
         }
         return false;
     }
@@ -129,12 +122,7 @@ public abstract class AbstractPipelineViewAction implements Action, IconSpec {
         JSONObject result = new JSONObject();
 
         Integer estimatedNextBuildNumber;
-        try {
-            estimatedNextBuildNumber = api.replay();
-        } catch (ExecutionException | InterruptedException | TimeoutException e) {
-            LOGGER.log(Level.SEVERE, "Failed to queue item", e);
-            return HttpResponses.errorJSON("failed to queue item: " + e.getMessage());
-        }
+        estimatedNextBuildNumber = api.replay();
 
         if (estimatedNextBuildNumber == null) {
             return HttpResponses.errorJSON("failed to get next build number");

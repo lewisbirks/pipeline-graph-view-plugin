@@ -28,9 +28,7 @@ public class SCMRunDetailsItems {
                 runDetailsItems.addAll(GitHubBranchSourceRunDetailsItems.getGitInformation(scmRevisionAction));
                 commit = GitHubBranchSourceRunDetailsItems.getGitCommit(scmRevisionAction);
 
-            } else if (scmRevisionAction.getRevision() instanceof AbstractGitSCMSource.SCMRevisionImpl) {
-                AbstractGitSCMSource.SCMRevisionImpl revision =
-                        (AbstractGitSCMSource.SCMRevisionImpl) scmRevisionAction.getRevision();
+            } else if (scmRevisionAction.getRevision() instanceof AbstractGitSCMSource.SCMRevisionImpl revision) {
                 commit = revision.getHash().substring(0, 7);
             }
 

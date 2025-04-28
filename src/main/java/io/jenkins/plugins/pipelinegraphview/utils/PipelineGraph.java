@@ -5,7 +5,7 @@ import java.util.List;
 public class PipelineGraph {
 
     private List<PipelineStage> stages;
-    private boolean complete = false;
+    private boolean complete;
 
     public PipelineGraph(List<PipelineStage> stages, boolean complete) {
         this.stages = stages;

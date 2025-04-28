@@ -16,7 +16,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class NodeRelationship {
-    private boolean isDebugEnabled = logger.isDebugEnabled();
+    private final boolean isDebugEnabled = logger.isDebugEnabled();
     private static final Logger logger = LoggerFactory.getLogger(NodeRelationship.class);
 
     @NonNull
