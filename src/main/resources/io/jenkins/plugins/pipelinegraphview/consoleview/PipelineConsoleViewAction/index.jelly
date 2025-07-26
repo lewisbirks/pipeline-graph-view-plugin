@@ -101,12 +101,16 @@
             </div>
 
             <j:if test="${!empty(it.run.description)}">
-                <div class="pgv-description">
+                <div class="pgv-description-wrapper">
                     <l:icon src="symbol-information-circle-outline plugin-ionicons-api" />
-                    <div>
-                        <j:out value="${app.markupFormatter.translate(it.run.description)}"/>
+                    <div class="pgv-collapsible-container">
+                        <div class="pgv-description-content">
+                            <j:out value="${app.markupFormatter.translate(it.run.description)}"/>
+                        </div>
+                        <span class="pgv-collapsible-toggle" style="display: none;"/>
                     </div>
                 </div>
+                <script src="${resURL}/plugin/pipeline-graph-view/js/build-description.js" type="module"/>
             </j:if>
 
             <j:set var="configPermission" value="${h.hasPermission(it, it.configurePermission)}" />
