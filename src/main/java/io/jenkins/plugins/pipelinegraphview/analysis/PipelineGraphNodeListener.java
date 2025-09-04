@@ -10,9 +10,13 @@ import java.io.InputStream;
 import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
+import java.util.Queue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
@@ -29,10 +33,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 @Extension
-public class PipelineGraphListener implements GraphListener {
+public class PipelineGraphNodeListener implements GraphListener {
 
-    private static final ConcurrentHashMap<String, CountingLock> fileLocks = new ConcurrentHashMap<>();
-    private static final Logger log = LoggerFactory.getLogger(PipelineGraphListener.class);
+    private static final ConcurrentHashMap<WorkflowRun, RunLockBucket> runBuckets = new ConcurrentHashMap<>();
+    private static final Logger log = LoggerFactory.getLogger(PipelineGraphNodeListener.class);
 
     @Override
     public void onNewHead(FlowNode node) {
@@ -51,27 +55,19 @@ public class PipelineGraphListener implements GraphListener {
             return;
         }
         String id = node.getId();
-        String uniqueId = computeUniqueId(node);
-
 
         // update the current node file
-        Lock mine = getLock(uniqueId);
+        Lock mine = getLock(workflowRun, node);
         try {
             mine.lock();
-            File file = getFile(workflowRun, id);
-            // create the parent directory if it doesn't exist
-            if (!file.getParentFile().exists() && !file.getParentFile().mkdirs()) {
-                log.warn("Unable to create parent directory for file {}", file.getAbsolutePath());
-                return;
-            }
-            // read the current file
+            Path file = getFile(workflowRun, id);
             JsonFlowNode current = new JsonFlowNode(node);
-            if (file.exists()) {
+            if (Files.exists(file)) {
                 String existing;
-                try (InputStream is = new BufferedInputStream(new FileInputStream(file))) {
-                    existing = new String(is.readAllBytes(), StandardCharsets.UTF_8);
+                try {
+                    existing = Files.readString(file, StandardCharsets.UTF_8);
                 } catch (IOException e) {
-                    log.warn("Unable to read file {}", file.getAbsolutePath(), e);
+                    log.warn("Unable to read file {}", file.toAbsolutePath(), e);
                     return;
                 }
                 JSONObject json = JSONObject.fromObject(existing);
@@ -80,36 +76,49 @@ public class PipelineGraphListener implements GraphListener {
             writeFile(file, current);
         } finally {
             mine.unlock();
-            releaseLock(uniqueId);
+            releaseLock(workflowRun, node);
         }
 
-        updateParentsChildren(node, workflowRun);
+        try {
+            updateParentsChildren(node, workflowRun);
+        } catch (IOException e) {
+            log.warn("Unable to update parents/children for node {}", id, e);
+        }
     }
 
-    private void updateParentsChildren(FlowNode node, WorkflowRun run) {
+    private void updateParentsChildren(FlowNode node, WorkflowRun run) throws IOException {
         String id = node.getId();
-        for (FlowNode parent : node.getParents()) {
+        for (FlowNode pnode : node.getParents()) {
+            FlowNode parent = pnode;
             if (!(parent instanceof BlockStartNode) && !(parent instanceof BlockEndNode<?>)) {
-                log.warn("Parent of node {} is not a stage", id);
-                continue;
+                Queue<FlowNode> toCheck = new ArrayDeque<>(parent.getParents());
+                while (!toCheck.isEmpty()) {
+                    FlowNode next = toCheck.poll();
+                    if (!(next instanceof BlockStartNode) && !(next instanceof BlockEndNode<?>)) {
+                        toCheck.addAll(next.getParents());
+                        continue;
+                    }
+                    parent = next;
+                    break;
+                }
             }
-            Lock parentLock = getLock(parent.getId());
+
+            String pId = parent.getId();
+            Lock parentLock = getLock(run, parent);
             try {
                 parentLock.lock();
-                File file = getFile(run, parent.getId());
-                if (!file.exists()) {
-                    log.warn("Parent file {} does not exist", file.getAbsolutePath());
+                Path file = getFile(run, pId);
+                if (!Files.exists(file)) {
+                    log.warn("Parent file {} does not exist", file.toAbsolutePath());
                     continue;
                 }
 
                 String foo;
-                try (InputStream is = new BufferedInputStream(new FileInputStream(file))) {
-                    foo = new String(is.readAllBytes(), StandardCharsets.UTF_8);
+                try {
+                    foo = Files.readString(file, StandardCharsets.UTF_8);
                 } catch (FileNotFoundException e) {
-                    log.warn("SHOULD NOT HAPPEN {}", file.getAbsolutePath(), e);
+                    log.warn("SHOULD NOT HAPPEN {}", file.toAbsolutePath(), e);
                     continue;
-                } catch (IOException e) {
-                    throw new UncheckedIOException(e);
                 }
                 JSONObject json = JSONObject.fromObject(foo, new JsonConfig());
                 JsonFlowNode parentNode = JsonFlowNode.fromJson(json);
@@ -118,55 +127,50 @@ public class PipelineGraphListener implements GraphListener {
                 }
             } finally {
                 parentLock.unlock();
-                releaseLock(parent.getId());
+                releaseLock(run, parent);
             }
         }
     }
 
-    private static void writeFile(File file, JsonFlowNode node) {
+    private static void writeFile(Path file, JsonFlowNode node) {
         try {
-            Files.writeString(file.toPath(), JsonFlowNode.toJson(node).toString(), StandardCharsets.UTF_8);
+            Files.writeString(file, JsonFlowNode.toJson(node).toString(), StandardCharsets.UTF_8);
         } catch (IOException e) {
-            log.warn("Unable to write file {}", file.getAbsolutePath(), e);
+            log.warn("Unable to write file {}", file.toAbsolutePath(), e);
         }
     }
 
-    private static String computeUniqueId(FlowNode node) {
-        return node.getId() + ":" + node.getDisplayName();
+    private Path getFile(WorkflowRun run, String id) {
+        Path filePath = run.getRootDir().toPath().resolve("pipeline-graph").resolve(id + ".json");
+        try {
+            Files.createDirectories(filePath.getParent());
+            return filePath;
+        } catch (IOException e) {
+            log.warn("Unable to create directory for file {}", filePath.toAbsolutePath(), e);
+            throw new UncheckedIOException(e);
+        }
     }
 
-    private File getFile(WorkflowRun run, String id) {
-        return new File(new File(run.getRootDir(), "pipeline-graph"), id + ".json");
+    private Lock getLock(WorkflowRun run, FlowNode node) {
+        return runBuckets.computeIfAbsent(run, ignored -> new RunLockBucket()).getLock(node);
     }
 
-    private Lock getLock(String file) {
-        return fileLocks.compute(file, (key, existing) -> {
-            if (existing == null) {
-                return new CountingLock();
-            }
-            existing.count++;
-            return existing;
-        }).lock;
-    }
-
-    private void releaseLock(String file) {
-        fileLocks.compute(file, (key, lock) -> {
-            if (lock == null) {
-                log.warn("Unable to release lock for file {}", file);
+    private void releaseLock(WorkflowRun run, FlowNode node) {
+        runBuckets.compute(run, (key, bucket) -> {
+            if (bucket == null) {
+                log.warn("Unable to release lock for run {}", run);
                 return null;
             }
-            int count = lock.count--;
-            if (count <= 0) {
-                if (count < 0) {
-                    log.warn("Lock count for file {} is somehow negative", file);
-                }
+            bucket.releaseLock(node);
+
+            if (bucket.fileLocks.isEmpty()) {
                 return null;
             }
-            return lock;
+            return bucket;
         });
     }
 
-    private static class JsonFlowNode {
+    public static class JsonFlowNode {
         final String id;
         List<String> parents;
         List<String> children;
@@ -176,7 +180,7 @@ public class PipelineGraphListener implements GraphListener {
             this.parents = new ArrayList<>(node.getParentIds());
         }
 
-        public JsonFlowNode(String id, List<String> parents, List<String> children) {
+        JsonFlowNode(String id, List<String> parents, List<String> children) {
             this.id = id;
             this.parents = parents;
             this.children = children;
@@ -238,6 +242,8 @@ public class PipelineGraphListener implements GraphListener {
             }
             return json;
         }
+
+
     }
 
     /**
@@ -253,5 +259,36 @@ public class PipelineGraphListener implements GraphListener {
         }
     }
 
+    private static class RunLockBucket {
+        private final Map<String, CountingLock> fileLocks = new ConcurrentHashMap<>();
 
+        Lock getLock(FlowNode node) {
+            return fileLocks.compute(node.getId(), (key, existing) -> {
+                if (existing == null) {
+                    return new CountingLock();
+                }
+                existing.count++;
+                return existing;
+            }).lock;
+        }
+
+        void releaseLock(FlowNode node) {
+            String id = node.getId();
+            fileLocks.compute(id, (key, lock) -> {
+                if (lock == null) {
+                    log.warn("Unable to release lock for file {}", id);
+                    return null;
+                }
+                int count = lock.count--;
+                if (count <= 0) {
+                    if (count < 0) {
+                        log.warn("Lock count for file {} is somehow negative", id);
+                    }
+                    return null;
+                }
+                return lock;
+            });
+
+        }
+    }
 }
