@@ -246,20 +246,21 @@ public class PipelineGraphNodeListener implements GraphListener {
 
     }
 
-    /**
-     * A wrapper around a lock that keeps track of how many times it has been acquired.
-     */
-    private static class CountingLock {
-        final Lock lock;
-        int count;
-
-        CountingLock() {
-            this.lock = new ReentrantLock();
-            this.count = 1;
-        }
-    }
-
     private static class RunLockBucket {
+
+        /**
+         * A wrapper around a lock that keeps track of how many times it has been acquired.
+         */
+        private static class CountingLock {
+            final Lock lock;
+            int count;
+
+            CountingLock() {
+                this.lock = new ReentrantLock();
+                this.count = 1;
+            }
+        }
+
         private final Map<String, CountingLock> fileLocks = new ConcurrentHashMap<>();
 
         Lock getLock(FlowNode node) {
